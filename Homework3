@@ -1,2 +1,223 @@
-#include
-Int main
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <ctype.h>
+
+struct Tree
+ {
+  int value;
+  struct Tree* left;
+  struct Tree* right;
+ };
+
+struct Tree* tree_alloc(int data)
+ {
+  struct Tree* e=calloc(1,sizeof(struct Tree));
+  if (e==NULL)
+   {
+    printf("error tree elem calloc\n");
+    return NULL;
+   }
+  e->value=data;
+  return e;
+ }
+
+struct Tree* tree_find(struct Tree* root, int data)
+ {
+  while (root)
+   { 
+    if (root->value==data)
+     return root;
+    if (root->value<data)
+     root=root->right;
+    else
+     root=root->left;
+   }
+  return root;
+ }
+
+struct Tree *tree_find_parent(struct Tree* root, int data)
+ {
+  struct Tree* parent=NULL;
+  while (root)
+   {
+    if (root->value==data)
+      return parent;
+    parent=root;
+    if (root->value<data)
+     root=root->right;
+    else
+     root=root->left;
+   }
+  return parent;
+ } 
+
+struct Tree* tree_push(struct Tree* root, int data)
+ {
+  struct Tree*elem=tree_find_parent(root,data);
+  if (elem==NULL)
+   {
+    elem=tree_alloc(data);
+    if (elem==NULL)
+     {
+      printf("error tree_alloc elem");
+      return NULL;
+     }
+    return elem;
+   }
+  if (elem->value==data)
+   {
+    return root;
+   }
+  struct Tree* x=tree_alloc(data);
+  if (x==NULL)
+   {
+    printf("error tree_alloc x");
+    return NULL;
+   }
+  if (root->value<data)
+   {
+    elem->right=x;
+   }
+  else
+   {
+    elem->left=x;
+   }
+  return root;
+ }
+
+struct Tree* tree_find_min_end(struct Tree* root)
+ {
+  struct Tree* x;
+  while(root)
+   {
+    x=root;
+    root=root->left;
+   }
+  return x;
+ }
+
+struct Tree* tree_remove(struct Tree* root, int data)
+ {
+  struct Tree* x=tree_find(root,data);
+  if (x==NULL)
+    return root;
+  struct Tree* parent=tree_find_parent(root,data);
+  if (parent==NULL)
+    {
+     struct Tree* x=tree_find_min_end(root->right);
+     if (x==NULL)
+      {
+       if (x->left==NULL)
+        {
+         return NULL;
+        }
+       else
+         return x->left;
+      }
+     x->left=root->left;
+     root=root->right;
+     return root;
+    }
+  if (parent->value<data)
+   {
+    parent->right=x->right;
+    struct Tree* y=tree_find_min_end(x->right);
+    if (y==NULL)
+     {
+      free(x);
+      return root;
+     }
+    y->left=x->left;
+    free(x);
+   }
+  else
+   {
+    parent->left=x->right;
+    struct Tree* y=tree_find_min_end(x->right);
+    if (y==NULL)
+     {
+      parent->left=x->left;
+      free(x);
+      return root;
+     }
+    y->left=x->left;
+    free(x);
+   }
+  return root;
+ }
+
+struct Elem
+ {
+  int value;
+  char mark;
+ };
+
+
+struct Elem* read_elem(FILE* f)
+ {
+   struct  Elem* e = (struct Elem*)calloc(1,sizeof(struct Elem));
+   if (e==NULL)
+    {
+      printf("error memory alloc e");
+      return NULL;
+    }
+   e->value=-1;
+   e->mark=')';
+   while(!feof(f) && e->value==-1)
+    {
+      fscanf(f,"%c %d",&e->mark,&e->value);
+    }
+   if (e->value==-1)
+    return NULL;   
+   return e;
+ }
+
+int main(int argc, char* argv[])
+{
+ if (argc<2)
+  {
+   printf("error input parametres\n");
+   return 1;
+  }
+ FILE * f=fopen(argv[1],"r");
+ if (!f)
+  {
+   printf("ER:%s",strerror(errno));
+   return 1;
+  }
+ struct Tree* mytree;
+ struct Elem* e=(struct Elem*)calloc(1,sizeof(struct Elem));
+ while (!feof(f))
+  {
+   e=read_elem(f);
+   if (e==NULL)
+    {
+     if (feof(f))
+      break;
+     printf("error read elem");
+     fclose(f);
+     return 1;
+    }
+   if (e->mark=='+')
+    {
+     mytree=tree_push(mytree,e->value);
+    }
+   if (e->mark=='-')
+    {
+     mytree=tree_remove(mytree,e->value);
+    }
+   if (e->mark=='?')
+    {
+     struct Tree* ft=tree_find(mytree,e->value);
+     if (ft==NULL)
+      printf("NO %d\n",e->value);
+     else 
+      printf("YES %d\n", e->value);
+    }
+  }
+ free(e);
+ fclose(f);
+ return 0;
+}
